@@ -1,21 +1,40 @@
-FROM golang:alpine AS builder
+FROM golang:1.22-alpine AS builder
 
-WORKDIR /app
+WORKDIR /build
+RUN apk add --no-cache git
 
-COPY go.mod .
-COPY go.sum .
+# build usque
+RUN git clone https://github.com/Diniboy1123/usque.git
+WORKDIR /build/usque
+RUN CGO_ENABLED=0 go build -o /out/usque ./cmd
 
-RUN go mod download
+# build masque-plus
+WORKDIR /build
+RUN git clone https://github.com/ircfspace/masque-plus.git
+WORKDIR /build/masque-plus
+RUN CGO_ENABLED=0 go build -o /out/masque-plus
 
-COPY . .
-
-RUN go build -o usque -ldflags="-s -w" .
-
-# scratch won't be enough, because we need a cert store
 FROM alpine:latest
+RUN apk add --no-cache \
+    ca-certificates \
+    bash \
+    curl \
+    busybox-extras
 
-WORKDIR /app
+COPY --from=builder /out/usque /usr/local/bin/usque
+COPY --from=builder /out/masque-plus /usr/local/bin/masque-plus
 
-COPY --from=builder /app/usque /bin/usque
+COPY entrypoint.sh /entrypoint.sh
+COPY watchdog.sh /watchdog.sh
+COPY healthcheck.sh /healthcheck.sh
 
-ENTRYPOINT ["/bin/usque"]
+RUN chmod +x /entrypoint.sh /watchdog.sh /healthcheck.sh
+
+VOLUME ["/config", "/data"]
+
+EXPOSE 1080
+
+HEALTHCHECK --interval=30s --timeout=6s --retries=3 \
+  CMD /healthcheck.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
