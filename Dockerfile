@@ -3,19 +3,20 @@ FROM golang:1.24-alpine AS builder
 WORKDIR /build
 RUN apk add --no-cache git
 
-# usque
+# ================= usque =================
 RUN git clone https://github.com/Diniboy1123/usque.git
 WORKDIR /build/usque
-RUN CGO_ENABLED=0 go build -o usque ./cmd
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 \
+    go build -o usque ./cmd/usque
 
-# masque-plus
+# ================= masque-plus =================
 WORKDIR /build
 RUN git clone https://github.com/ircfspace/masque-plus.git
 WORKDIR /build/masque-plus
-RUN CGO_ENABLED=0 go build -o masque-plus .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 \
+    go build -o masque-plus .
 
 # ================= runtime =================
-
 FROM alpine:latest
 RUN apk add --no-cache \
     ca-certificates \
@@ -26,7 +27,7 @@ RUN apk add --no-cache \
 COPY --from=builder /build/usque/usque /usr/local/bin/usque
 COPY --from=builder /build/masque-plus/masque-plus /usr/local/bin/masque-plus
 
-# 🔴 🔴 🔴 必须有这一行（核心修复）
+# 🔴 必须显式 chmod
 RUN chmod +x /usr/local/bin/usque /usr/local/bin/masque-plus
 
 COPY entrypoint.sh /entrypoint.sh
