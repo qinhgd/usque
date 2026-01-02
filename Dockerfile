@@ -1,4 +1,4 @@
-FROM golang:1.22-alpine AS builder
+FROM golang:1.24-alpine AS builder
 
 WORKDIR /build
 RUN apk add --no-cache git
@@ -12,7 +12,7 @@ RUN CGO_ENABLED=0 go build -o /out/usque ./cmd
 WORKDIR /build
 RUN git clone https://github.com/ircfspace/masque-plus.git
 WORKDIR /build/masque-plus
-RUN CGO_ENABLED=0 go build -o /out/masque-plus
+RUN CGO_ENABLED=0 go build -o /out/masque-plus .
 
 FROM alpine:latest
 RUN apk add --no-cache \
